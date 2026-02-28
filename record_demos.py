@@ -229,26 +229,30 @@ class MappedSe3Keyboard(Se3Keyboard):
         }
 
     def _on_keyboard_event(self, event, *args, **kwargs):
+        # event.input may be a carb.input enum (with .name) or a plain string
+        raw = event.input
+        key_name = raw.name if hasattr(raw, "name") else str(raw)
+        key_name = key_name.upper()
         # apply the command when pressed
         if event.type == carb.input.KeyboardEventType.KEY_PRESS:
-            if event.input.name == getattr(self, "_device_reset_key", "L"):
+            if key_name == getattr(self, "_device_reset_key", "L"):
                 self.reset()
-            if event.input.name == self._gripper_key:
+            if key_name == self._gripper_key:
                 self._close_gripper = not self._close_gripper
-            elif event.input.name in self._pos_keys:
-                self._delta_pos += self._INPUT_KEY_MAPPING[event.input.name]
-            elif event.input.name in self._rot_keys:
-                self._delta_rot += self._INPUT_KEY_MAPPING[event.input.name]
+            elif key_name in self._pos_keys:
+                self._delta_pos += self._INPUT_KEY_MAPPING[key_name]
+            elif key_name in self._rot_keys:
+                self._delta_rot += self._INPUT_KEY_MAPPING[key_name]
         # remove the command when un-pressed
         if event.type == carb.input.KeyboardEventType.KEY_RELEASE:
-            if event.input.name in self._pos_keys:
-                self._delta_pos -= self._INPUT_KEY_MAPPING[event.input.name]
-            elif event.input.name in self._rot_keys:
-                self._delta_rot -= self._INPUT_KEY_MAPPING[event.input.name]
+            if key_name in self._pos_keys:
+                self._delta_pos -= self._INPUT_KEY_MAPPING[key_name]
+            elif key_name in self._rot_keys:
+                self._delta_rot -= self._INPUT_KEY_MAPPING[key_name]
         # additional callbacks
         if event.type == carb.input.KeyboardEventType.KEY_PRESS:
-            if event.input.name in self._additional_callbacks:
-                self._additional_callbacks[event.input.name]()
+            if key_name in self._additional_callbacks:
+                self._additional_callbacks[key_name]()
         return True
 
 
@@ -689,9 +693,24 @@ def run_simulation_loop(
                 )
             )
 
+    def export_and_reset():
+        """Export current episode to HDF5 (marked as success) and reset the environment."""
+        nonlocal should_reset_recording_instance
+        try:
+            env.recorder_manager.record_pre_reset([0], force_export_or_skip=False)
+            env.recorder_manager.set_success_to_episodes(
+                [0], torch.tensor([[True]], dtype=torch.bool, device=env.device)
+            )
+            env.recorder_manager.export_episodes([0])
+            print("Episode manually exported as SUCCESS and saved to HDF5.")
+        except Exception as exc:
+            print(f"Failed to export episode: {exc}")
+        should_reset_recording_instance = True
+
     # Set up teleoperation callbacks
     teleoperation_callbacks = {
         "R": reset_recording_instance,
+        "E": export_and_reset,
         toggle_recording_key: toggle_recording_instance,
         "START": start_recording_instance,
         "STOP": stop_recording_instance,

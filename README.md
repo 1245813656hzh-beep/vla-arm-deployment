@@ -3,6 +3,22 @@
 本目录提供一个基于 IsaacLab `scripts/tools/record_demos.py` 改过的录制脚本：`record_demos.py`。
 用途是用人类键盘遥操作采集 manipulation 任务的演示数据，并导出为 HDF5（episodes）。
 
+## 项目结构
+
+```
+UR10_VLA/
+├── record_demos.py        # 主录制脚本（键盘遥操作 + HDF5 导出）
+├── analyze_dataset.py     # HDF5 数据集分析工具
+├── Task/                  # 本地任务配置（优先于系统版本加载）
+│   ├── franka/            # Franka 机械臂任务配置
+│   │   ├── stack_ik_rel_env_cfg.py    # Stack 任务 IK 配置（含双摄像头 + 放宽成功条件）
+│   │   ├── stack_joint_pos_env_cfg.py # Stack 任务关节位置配置
+│   │   └── ...
+│   ├── ur10_gripper/      # UR10 吸盘任务配置
+│   └── ur_10e/            # UR10e 部署任务配置
+└── README.md
+```
+
 ## 运行前准备
 
 - IsaacLab 仓库在 `~/IsaacLab`
@@ -24,7 +40,8 @@ source ~/miniforge3/bin/activate isaac
   --teleop_device keyboard \
   --teleop_space task \
   --dataset_file ./datasets/<name>.hdf5 \
-  --device cuda:0
+  --device cuda:0 \
+  --enable_cameras
 ```
 
 参数说明：
@@ -33,12 +50,27 @@ source ~/miniforge3/bin/activate isaac
 - `--dataset_file`：输出 HDF5 文件路径（会创建/覆盖）
 - `--device cuda:0`：仿真用 GPU；部分任务（如吸盘 suction）可能需要 `--device cpu`
 - `--teleop_space task`：末端（SE(3) delta pose）遥操作
-- 键盘布局默认使用 `ijkl`，避免与 Isaac Sim viewport 的 WASD 导航快捷键冲突（通常不需要额外参数）
+- `--enable_cameras`：启用摄像头（录制图像数据需要此参数）
+- 键盘布局默认使用 `ijkl`，避免与 Isaac Sim viewport 的 WASD 导航快捷键冲突
 - 如果 `UR10_VLA/Task` 下存在本地任务配置，会优先加载本地版本（方便二次开发）
 
 ## 可用任务与示例
 
-### 1) Franka Lift：抓起方块
+### 1) Franka Stack：堆叠方块（主要任务）
+
+三个方块堆叠任务，配置了双摄像头（table_cam + wrist_cam），成功条件 XY 阈值已放宽至 0.1。
+
+```bash
+./isaaclab.sh -p ../UR10_VLA/record_demos.py \
+  --task Isaac-Stack-Cube-Franka-IK-Rel-v0 \
+  --teleop_device keyboard \
+  --teleop_space task \
+  --dataset_file ./datasets/franka_stack.hdf5 \
+  --device cuda:0 \
+  --enable_cameras
+```
+
+### 2) Franka Lift：抓起方块
 
 适合练习抓取+抬升，难度较低。
 
@@ -48,19 +80,6 @@ source ~/miniforge3/bin/activate isaac
   --teleop_device keyboard \
   --teleop_space task \
   --dataset_file ./datasets/franka_lift.hdf5 \
-  --device cuda:0
-```
-
-### 2) Franka Stack：堆叠方块
-
-比 Lift 更难（接触更多、需要精确放置）。
-
-```bash
-./isaaclab.sh -p ../UR10_VLA/record_demos.py \
-  --task Isaac-Stack-Cube-Franka-IK-Rel-v0 \
-  --teleop_device keyboard \
-  --teleop_space task \
-  --dataset_file ./datasets/franka_stack.hdf5 \
   --device cuda:0
 ```
 
@@ -91,55 +110,111 @@ source ~/miniforge3/bin/activate isaac
   --device cuda:0
 ```
 
-## 如何开始/结束录制
-
-- 启动脚本后会自动开始录制，无需额外按键
-- 确保 Isaac Sim 窗口/viewport 获得焦点（鼠标点一下 viewport），然后直接用键盘控制机械臂完成任务
-- `F9`：开始/暂停录制（切换开关）
-- **结束一条演示**：
-  - 任务达到成功条件并保持连续 `--num_success_steps`（默认 10）步后，会自动结束本条并导出到 `--dataset_file`
-  - 或按 `R` 重置环境，提前结束当前演示并开始下一条
-
-## 录制内容说明
-
-- 录制器使用 `ActionStateRecorder`，会保存**动作(action)** 与**状态(state)**
-- 当 `--teleop_space task` 时，记录的 action 是末端 **SE(3) delta pose**（不是关节命令）
-- 状态里通常包含关节位置/速度等机器人状态（具体字段取决于任务环境配置）
-
 ## 键盘按键说明
 
-通用：
+### 录制控制
 
-- `F9`：开始/暂停录制（切换开关）
-- `R`：重置环境 / 重新开始本条录制
+| 按键 | 功能 |
+|------|------|
+| `F9` | 开始/暂停录制（切换开关） |
+| `E`  | **保存当前 episode 到 HDF5（标记为成功）并重置环境** |
+| `R`  | 重置环境（丢弃当前 episode，不保存） |
+| `F8` | 清空当前按键累计的位移/旋转输入（不重置环境） |
 
-### 布局 1：默认 `ijkl`（推荐，减少与 viewport 冲突）
+### 末端平移（ijkl 布局）
 
-末端平移：
+| 按键 | 方向 |
+|------|------|
+| `I / K` | +X / -X |
+| `J / L` | +Y / -Y |
+| `U / O` | +Z / -Z |
 
-- `I/K`：+X / -X
-- `J/L`：+Y / -Y
-- `U/O`：+Z / -Z
+### 末端旋转
 
-末端旋转：
+| 按键 | 方向 |
+|------|------|
+| `N / M` | +roll / -roll |
+| `T / G` | +pitch / -pitch |
+| `Y / B` | +yaw / -yaw |
 
-- `N/M`：+roll / -roll
-- `T/G`：+pitch / -pitch
-- `Y/B`：+yaw / -yaw
+### 夹爪
 
-夹爪：
+| 按键 | 功能 |
+|------|------|
+| `P` | 开/关切换 |
 
-- `P`：开/关切换
+## 录制流程说明
 
-设备输入清零（仅清空末端 delta 命令，不重置环境）：
+1. 启动脚本后自动开始录制，确保 Isaac Sim viewport 获得焦点
+2. 用键盘控制机械臂完成任务
+3. **结束一条演示**有两种方式：
+   - **自动成功**：任务达到成功条件并保持连续 `--num_success_steps`（默认 10）步后，自动导出
+   - **手动保存**：按 `E` 键手动将当前 episode 标记为成功并导出到 HDF5
+4. 按 `R` 可丢弃当前 episode 并重置（不保存）
+5. 按 `F9` 可暂停/恢复录制
 
-- `F8`：清空当前按键累计的位移/旋转输入
+## 摄像头配置
 
-环境重置：
+Franka Stack 任务配置了两个 200x200 RGB 摄像头：
 
-- `R`：重置环境 / 重新开始本条录制
+| 摄像头 | 位置 | 用途 |
+|--------|------|------|
+| `table_cam` | 桌面前方俯瞰视角 (1.0, 0.0, 0.6) | 全局观察 |
+| `wrist_cam` | 机械臂腕部 (panda_hand) | 近距离观察 |
+
+需要 `--enable_cameras` 参数才能启用摄像头数据录制。
+
+## 成功条件
+
+Franka Stack 任务的成功条件（本地配置已修改）：
+
+- 三个方块垂直堆叠（cube_3 底部, cube_2 中间, cube_1 顶部）
+- **XY 对齐阈值：0.1**（原始默认 0.04，已放宽 2.5 倍）
+- 高度差：约 0.0468m（每层）
+- 高度误差阈值：0.005m
+- 夹爪必须打开
+
+## HDF5 数据集结构
+
+每条 demo 包含以下数据：
+
+```
+/data/demo_N/
+├── actions                 # (T, 7) 操作指令 [dx, dy, dz, droll, dpitch, dyaw, gripper]
+├── processed_actions       # (T-1, 8) 环境处理后的动作
+├── obs/                    # 观测数据
+│   ├── joint_pos           # (T, 9) 关节位置
+│   ├── joint_vel           # (T, 9) 关节速度
+│   ├── eef_pos             # (T, 3) 末端位置
+│   ├── eef_quat            # (T, 4) 末端姿态四元数
+│   ├── gripper_pos         # (T, 2) 夹爪位置
+│   ├── cube_positions      # (T, 9) 三个方块的位置
+│   ├── cube_orientations   # (T, 12) 三个方块的朝向
+│   ├── object              # (T, 39) 综合物体状态
+│   ├── table_cam           # (T, 200, 200, 3) 桌面摄像头 RGB 图像
+│   └── wrist_cam           # (T, 200, 200, 3) 腕部摄像头 RGB 图像
+├── states/                 # 物理状态（用于回放/重置）
+│   ├── articulation/robot/ # 机器人关节位置/速度/根位姿
+│   └── rigid_object/       # 各方块位姿/速度
+└── initial_state/          # episode 初始状态
+```
+
+## 数据集分析工具
+
+使用 `analyze_dataset.py` 检查录制的 HDF5 文件：
+
+```bash
+# 查看顶层结构
+python analyze_dataset.py /path/to/dataset.hdf5 --mode top
+
+# 查看完整结构
+python analyze_dataset.py /path/to/dataset.hdf5 --mode full
+```
 
 ## 常见问题
 
-- 觉得卡顿：可以把控制频率降一点，例如加上 `--step_hz 20`（默认 30）。
-- 按键冲突：默认已用 `ijkl` 并避开了 `H` 等常见热键；仍冲突时，确保 viewport 聚焦。
+- **觉得卡顿**：可以降低控制频率，例如 `--step_hz 20`（默认 30）
+- **按键冲突**：默认已用 `ijkl` 并避开了 `H` 等常见热键；仍冲突时确保 viewport 聚焦
+- **Overriding environment 警告**：正常现象，本地任务注册时覆盖系统版本导致，不影响功能
+- **摄像头图像全黑**：确认加了 `--enable_cameras` 参数
+- **demo 只有 1 步**：说明在重置后立刻按了 E 键，注意先操作几步再保存
