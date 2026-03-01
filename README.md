@@ -11,8 +11,9 @@ UR10_VLA/
 ├── analyze_dataset.py     # HDF5 数据集分析工具
 ├── Task/                  # 本地任务配置（优先于系统版本加载）
 │   ├── franka/            # Franka 机械臂任务配置
-│   │   ├── stack_ik_rel_env_cfg.py    # Stack 任务 IK 配置（含双摄像头 + 放宽成功条件）
-│   │   ├── stack_joint_pos_env_cfg.py # Stack 任务关节位置配置
+│   │   ├── stack_ik_rel_env_cfg.py        # Stack 任务 IK 配置（含双摄像头 + 放宽成功条件）
+│   │   ├── place_bin_ik_rel_env_cfg.py    # Place-into-bin 任务 IK 配置（双摄像头，无成功条件）
+│   │   ├── stack_joint_pos_env_cfg.py     # Stack 任务关节位置配置
 │   │   └── ...
 │   ├── ur10_gripper/      # UR10 吸盘任务配置
 │   └── ur_10e/            # UR10e 部署任务配置
@@ -44,6 +45,93 @@ source ~/miniforge3/bin/activate isaac
   --enable_cameras
 ```
 
+## 全流程：录制 → Mimic 增强 → LeRobot → PI0.5 → 部署
+
+下面以 **Franka Place-into-Bin** 为例，给出完整流程。
+
+### 1) 录制原始演示（HDF5）
+
+```bash
+./isaaclab.sh -p ../UR10_VLA/record_demos.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-v0 \
+  --teleop_device keyboard \
+  --teleop_space task \
+  --dataset_file ./datasets/franka_place_bin.hdf5 \
+  --device cuda:0 \
+  --enable_cameras
+```
+
+说明：该任务 **无自动成功条件**，用 **E 键**手动保存 episode。
+
+### 2) Mimic 数据增强（标注 + 生成）
+
+Mimic 需要 3 步：
+
+```bash
+# (1) 标注子任务边界
+./isaaclab.sh -p scripts/imitation_learning/isaaclab_mimic/annotate_demos.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0 \
+  --input_dataset ./datasets/franka_place_bin.hdf5
+
+# (2) 生成扩增数据
+./isaaclab.sh -p scripts/imitation_learning/isaaclab_mimic/generate_dataset.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0 \
+  --input_dataset <annotated_dataset.hdf5> \
+  --num_trials 200
+```
+
+### 3) 转换为 LeRobot v3.0 数据集
+
+```bash
+python convert_to_lerobot.py \
+  --input ./datasets/franka_place_bin.hdf5 \
+  --output ./datasets/lerobot/franka_place_bin \
+  --repo-id local/franka_place_bin \
+  --task "pick up cubes and place them into the blue bin" \
+  --fps 30
+```
+
+### 4) 为 PI0.5 计算 quantile stats（必须）
+
+PI0.5 使用 **QUANTILES** 归一化（需要 `q01/q99` 等），转换后需补齐统计信息。
+
+```bash
+python /home/intern/copy_openarm_huang/openarms/OpenArm/lerobot/src/lerobot/datasets/v30/augment_dataset_quantile_stats.py \
+  --repo-id local/franka_place_bin \
+  --root ./datasets/lerobot/franka_place_bin
+```
+
+### 5) 微调 PI0.5（LeRobot 训练）
+
+```bash
+cd /home/intern/copy_openarm_huang/openarms/OpenArm/lerobot
+
+python -m lerobot.scripts.lerobot_train \
+  --dataset.repo_id=local/franka_place_bin \
+  --dataset.root=/home/intern/UR10_VLA/datasets/lerobot/franka_place_bin \
+  --policy.type=pi05 \
+  --policy.use_amp=false \
+  --policy.device=cuda \
+  --batch_size=8 \
+  --steps=30000
+```
+
+训练完成后，模型会输出到 `outputs/train/.../checkpoints/<step>/pretrained_model`。
+
+### 6) 部署到 Isaac Sim（闭环推理）
+
+已提供脚本：`deploy_vla.py`
+
+```bash
+./isaaclab.sh -p ../UR10_VLA/deploy_vla.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-v0 \
+  --policy_path /path/to/pretrained_model \
+  --dataset_repo_id local/franka_place_bin \
+  --dataset_root ../UR10_VLA/datasets/lerobot/franka_place_bin \
+  --device cuda:0 \
+  --enable_cameras
+```
+
 参数说明：
 
 - `--task`：环境 ID（任务名）
@@ -70,7 +158,22 @@ source ~/miniforge3/bin/activate isaac
   --enable_cameras
 ```
 
-### 2) Franka Lift：抓起方块
+### 2) Franka Place-into-Bin：将方块放入容器（推荐任务）
+
+蓝色分拣容器在桌面中央，2-3 个方块散落在容器外。使用键盘控制 Franka 把方块逐个抓起放入容器。
+无自动成功条件，用 **E 键**手动保存 episode。配置了双摄像头（table_cam + wrist_cam）。
+
+```bash
+./isaaclab.sh -p ../UR10_VLA/record_demos.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-v0 \
+  --teleop_device keyboard \
+  --teleop_space task \
+  --dataset_file ./datasets/franka_place_bin.hdf5 \
+  --device cuda:0 \
+  --enable_cameras
+```
+
+### 3) Franka Lift：抓起方块
 
 适合练习抓取+抬升，难度较低。
 
@@ -83,7 +186,7 @@ source ~/miniforge3/bin/activate isaac
   --device cuda:0
 ```
 
-### 3) UR10 Long Suction Stack：UR10 吸盘堆叠
+### 4) UR10 Long Suction Stack：UR10 吸盘堆叠
 
 使用吸盘末端执行器。该类任务通常需要 CPU 仿真（否则可能报错/不稳定）。
 
@@ -96,7 +199,7 @@ source ~/miniforge3/bin/activate isaac
   --device cpu
 ```
 
-### 4) UR10e Deploy Reach（ROS inference 环境）
+### 5) UR10e Deploy Reach（ROS inference 环境）
 
 偏部署/推理风格的 reach 环境；可能没有显式 `success` 终止条件。
 如果没有 `success`，录制脚本会导出所有 episode。
@@ -218,3 +321,4 @@ python analyze_dataset.py /path/to/dataset.hdf5 --mode full
 - **Overriding environment 警告**：正常现象，本地任务注册时覆盖系统版本导致，不影响功能
 - **摄像头图像全黑**：确认加了 `--enable_cameras` 参数
 - **demo 只有 1 步**：说明在重置后立刻按了 E 键，注意先操作几步再保存
+- **PI0.5 报 stats 缺失**：请先运行 `augment_dataset_quantile_stats.py` 生成 `q01/q99` 等统计量

@@ -120,3 +120,29 @@ gym.register(
     },
     disable_env_checker=True,
 )
+
+##
+# Place cubes into bin — IK Relative Pose Control
+##
+
+gym.register(
+    id="Isaac-Place-Bin-Franka-IK-Rel-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.place_bin_ik_rel_env_cfg:FrankaPlaceBinEnvCfg",
+    },
+    disable_env_checker=True,
+)
+
+##
+# Place cubes into bin — Mimic (data augmentation)
+##
+
+gym.register(
+    id="Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0",
+    entry_point=f"{__name__}.place_bin_mimic_env:FrankaPlaceBinIKRelMimicEnv",
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.place_bin_mimic_env_cfg:FrankaPlaceBinIKRelMimicEnvCfg",
+    },
+    disable_env_checker=True,
+)

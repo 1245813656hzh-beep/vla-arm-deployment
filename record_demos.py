@@ -177,6 +177,8 @@ def register_local_tasks(task_root: str) -> None:
     local_task_ids = {
         "Isaac-Lift-Cube-Franka-IK-Rel-v0",
         "Isaac-Stack-Cube-Franka-IK-Rel-v0",
+        "Isaac-Place-Bin-Franka-IK-Rel-v0",
+        "Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0",
         "Isaac-Stack-Cube-UR10-Long-Suction-IK-Rel-v0",
         "Isaac-Deploy-Reach-UR10e-ROS-Inference-v0",
     }
