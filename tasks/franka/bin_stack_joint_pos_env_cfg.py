@@ -35,7 +35,17 @@ class EventCfg:
         # mode="startup",
         mode="reset",
         params={
-            "default_pose": [0.0444, -0.1894, -0.1107, -2.5148, 0.0044, 2.3775, 0.6952, 0.0400, 0.0400],
+            "default_pose": [
+                0.0444,
+                -0.1894,
+                -0.1107,
+                -2.5148,
+                0.0044,
+                2.3775,
+                0.6952,
+                0.0400,
+                0.0400,
+            ],
         },
     )
 
@@ -55,7 +65,12 @@ class EventCfg:
         mode="reset",
         params={
             # Keep bin at fixed position - no randomization
-            "pose_range": {"x": (0.4, 0.4), "y": (0.0, 0.0), "z": (0.0203, 0.0203), "yaw": (0.0, 0.0)},
+            "pose_range": {
+                "x": (0.4, 0.4),
+                "y": (0.0, 0.0),
+                "z": (0.0203, 0.0203),
+                "yaw": (0.0, 0.0),
+            },
             "min_separation": 0.0,
             "asset_cfgs": [SceneEntityCfg("blue_sorting_bin")],
         },
@@ -66,7 +81,12 @@ class EventCfg:
         func=franka_stack_events.randomize_object_pose,
         mode="reset",
         params={
-            "pose_range": {"x": (0.4, 0.4), "y": (0.0, 0.0), "z": (0.0203, 0.0203), "yaw": (0.0, 0.0)},
+            "pose_range": {
+                "x": (0.4, 0.4),
+                "y": (0.0, 0.0),
+                "z": (0.0203, 0.0203),
+                "yaw": (0.0, 0.0),
+            },
             "min_separation": 0.0,
             "asset_cfgs": [SceneEntityCfg("cube_1")],
         },
@@ -77,7 +97,12 @@ class EventCfg:
         func=franka_stack_events.randomize_object_pose,
         mode="reset",
         params={
-            "pose_range": {"x": (0.65, 0.70), "y": (-0.18, 0.18), "z": (0.0203, 0.0203), "yaw": (-1.0, 1.0, 0)},
+            "pose_range": {
+                "x": (0.65, 0.70),
+                "y": (-0.18, 0.18),
+                "z": (0.0203, 0.0203),
+                "yaw": (-1.0, 1.0, 0),
+            },
             "min_separation": 0.1,
             "asset_cfgs": [SceneEntityCfg("cube_2"), SceneEntityCfg("cube_3")],
         },
@@ -128,13 +153,15 @@ class FrankaBinStackEnvCfg(StackEnvCfg):
             disable_gravity=False,
         )
 
-        # Blue sorting bin positioned at table center
+        # Blue sorting bin positioned slightly closer to robot base
         self.scene.blue_sorting_bin = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/BlueSortingBin",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.4, 0.0, 0.0203), rot=(1.0, 0.0, 0.0, 0.0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.25, 0.0, 0.0203), rot=(1.0, 0.0, 0.0, 0.0)
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Mimic/nut_pour_task/nut_pour_assets/sorting_bin_blue.usd",
-                scale=(1.1, 1.6, 3.3),
+                scale=(1.2, 1.0, 2.0),
                 rigid_props=sim_utils.RigidBodyPropertiesCfg(),
             ),
         )
@@ -143,7 +170,9 @@ class FrankaBinStackEnvCfg(StackEnvCfg):
         # The bin is at (0.4, 0.0, 0.0203), so cube_1 should be slightly above it
         self.scene.cube_1 = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Cube_1",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.4, 0.0, 0.025), rot=(1.0, 0.0, 0.0, 0.0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.4, 0.0, 0.025), rot=(1.0, 0.0, 0.0, 0.0)
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/blue_block.usd",
                 scale=(1.0, 1.0, 1.0),
@@ -154,7 +183,9 @@ class FrankaBinStackEnvCfg(StackEnvCfg):
         # Cube 2 positioned outside the bin (to the right)
         self.scene.cube_2 = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Cube_2",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.85, 0.25, 0.0203), rot=(1.0, 0.0, 0.0, 0.0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.85, 0.25, 0.0203), rot=(1.0, 0.0, 0.0, 0.0)
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/red_block.usd",
                 scale=(1.0, 1.0, 1.0),
@@ -165,7 +196,9 @@ class FrankaBinStackEnvCfg(StackEnvCfg):
         # Cube 3 positioned outside the bin (to the left)
         self.scene.cube_3 = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Cube_3",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.85, -0.25, 0.0203), rot=(1.0, 0.0, 0.0, 0.0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.85, -0.25, 0.0203), rot=(1.0, 0.0, 0.0, 0.0)
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/green_block.usd",
                 scale=(1.0, 1.0, 1.0),
