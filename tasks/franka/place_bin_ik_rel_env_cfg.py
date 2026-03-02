@@ -189,7 +189,7 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
             controller=DifferentialIKControllerCfg(
                 command_type="pose", use_relative_mode=True, ik_method="dls"
             ),
-            scale=0.5,
+            scale=0.8,
             body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, 0.107]),
         )
 
@@ -260,8 +260,8 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
                     xr_cfg=self.xr,
                 ),
                 "keyboard": Se3KeyboardCfg(
-                    pos_sensitivity=0.05,
-                    rot_sensitivity=0.05,
+                    pos_sensitivity=0.08,
+                    rot_sensitivity=0.08,
                     sim_device=self.sim.device,
                 ),
             }

@@ -358,9 +358,9 @@ def create_environment_config(
             " Will not be able to mark recorded demos as successful."
         )
 
-    # If environment doesn't define success, export everything.
-    # Otherwise, the default EXPORT_SUCCEEDED_ONLY would export nothing.
-    export_all_episodes = success_term is None
+    # Only export episodes explicitly marked as successful (via 'E' key).
+    # This prevents accidental exports when pressing 'R' to reset.
+    export_all_episodes = False
 
     # Optionally switch joint-space arm action to task-space IK for end-effector teleop.
     def _arm_action_is_joint_space(cfg: object) -> bool:
