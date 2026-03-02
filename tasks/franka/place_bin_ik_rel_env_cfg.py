@@ -157,17 +157,19 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
         # Remove the old event that put cube_1 inside the bin
         self.events.reset_cube_1_pose = None
         # Randomize all 3 cubes together outside the bin
+        # Cubes spawn BEHIND the bin (away from robot), within table_cam view
+        # Bin is at x=0.4, spawn cubes at x=0.58-0.65 (0.18-0.25m behind bin)
         self.events.reset_cube_pose = EventTerm(
             func=franka_stack_events.randomize_object_pose,
             mode="reset",
             params={
                 "pose_range": {
-                    "x": (0.65, 0.70),
-                    "y": (-0.18, 0.18),
+                    "x": (0.58, 0.65),  # Behind bin, visible to table_cam at (1.0, 0.0, 0.6)
+                    "y": (-0.20, 0.20),  # Spread left and right
                     "z": (0.0203, 0.0203),
                     "yaw": (-1.0, 1.0, 0),
                 },
-                "min_separation": 0.1,
+                "min_separation": 0.12,
                 "asset_cfgs": [
                     SceneEntityCfg("cube_1"),
                     SceneEntityCfg("cube_2"),
@@ -177,9 +179,7 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
         )
 
         # Set Franka with stiffer PD controller for better IK tracking
-        self.scene.robot = FRANKA_PANDA_HIGH_PD_CFG.replace(
-            prim_path="{ENV_REGEX_NS}/Robot"
-        )
+        self.scene.robot = FRANKA_PANDA_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
         # Set IK relative control
         self.actions.arm_action = DifferentialInverseKinematicsActionCfg(
@@ -190,9 +190,7 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
                 command_type="pose", use_relative_mode=True, ik_method="dls"
             ),
             scale=0.5,
-            body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(
-                pos=[0.0, 0.0, 0.107]
-            ),
+            body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, 0.107]),
         )
 
         # Wrist camera (mounted on panda_hand)
@@ -215,7 +213,7 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
             ),
         )
 
-        # Table camera (overhead view)
+        # Table camera (overhead view) - original position
         self.scene.table_cam = CameraCfg(
             prim_path="{ENV_REGEX_NS}/table_cam",
             update_period=0.0,
@@ -229,7 +227,7 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
                 clipping_range=(0.1, 2),
             ),
             offset=CameraCfg.OffsetCfg(
-                pos=(1.0, 0.0, 0.6),
+                pos=(1.0, 0.0, 0.6),  # Original position
                 rot=(0.27060, -0.65328, -0.65328, 0.27060),
                 convention="ros",
             ),

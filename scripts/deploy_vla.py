@@ -11,11 +11,11 @@ It uses image + state observations by default:
   - observation.images.wrist_cam
 
 Example:
-    ./isaaclab.sh -p ../UR10_VLA/deploy_vla.py \
+    ./isaaclab.sh -p ../vla-arm-deployment/deploy_vla.py \
       --task Isaac-Place-Bin-Franka-IK-Rel-v0 \
       --policy_path /path/to/pi05/checkpoint/pretrained_model \
       --dataset_repo_id local/franka_place_bin \
-      --dataset_root ../UR10_VLA/datasets/lerobot/franka_place_bin \
+      --dataset_root ../vla-arm-deployment/datasets/lerobot/franka_place_bin \
       --device cuda:0 \
       --enable_cameras
 """

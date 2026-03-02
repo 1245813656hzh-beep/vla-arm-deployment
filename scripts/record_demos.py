@@ -15,7 +15,7 @@ required arguments:
 optional arguments:
     -h, --help                Show this help message and exit
     --teleop_device           Device for interacting with environment. (default: keyboard)
-    --dataset_file            File path to export recorded demos. (default: "./datasets/dataset.hdf5")
+    --dataset_file            File path to export recorded demos. (default: "datasets/dataset.hdf5")
     --step_hz                 Environment stepping rate in Hz. (default: 30)
     --num_demos               Number of demonstrations to record. (default: 0)
     --num_success_steps       Number of continuous steps with task success for concluding a demo as successful. (default: 10)
@@ -32,9 +32,7 @@ import sys
 from isaaclab.app import AppLauncher
 
 # add argparse arguments
-parser = argparse.ArgumentParser(
-    description="Record demonstrations for Isaac Lab environments."
-)
+parser = argparse.ArgumentParser(description="Record demonstrations for Isaac Lab environments.")
 parser.add_argument("--task", type=str, required=True, help="Name of the task.")
 parser.add_argument(
     "--teleop_device",
@@ -49,12 +47,10 @@ parser.add_argument(
 parser.add_argument(
     "--dataset_file",
     type=str,
-    default="./datasets/dataset.hdf5",
-    help="File path to export recorded demos.",
+    default="datasets/dataset.hdf5",
+    help="File path to export recorded demos. Relative to project root (e.g., datasets/my_data.hdf5)",
 )
-parser.add_argument(
-    "--step_hz", type=int, default=30, help="Environment stepping rate in Hz."
-)
+parser.add_argument("--step_hz", type=int, default=30, help="Environment stepping rate in Hz.")
 parser.add_argument(
     "--num_demos",
     type=int,
@@ -92,10 +88,7 @@ AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
 # Keyboard teleop depends on Kit appwindow input APIs and won't work in headless mode.
-if (
-    getattr(args_cli, "headless", False)
-    and args_cli.teleop_device.lower() == "keyboard"
-):
+if getattr(args_cli, "headless", False) and args_cli.teleop_device.lower() == "keyboard":
     parser.error(
         "Keyboard teleop requires a GUI. Remove --headless or choose a non-keyboard teleop device."
     )
@@ -667,9 +660,7 @@ def run_simulation_loop(
         print("Recording started")
         if instruction_display is not None:
             instruction_display.show_demo(
-                build_label_text(
-                    current_recorded_demo_count, running_recording_instance
-                )
+                build_label_text(current_recorded_demo_count, running_recording_instance)
             )
 
     def stop_recording_instance():
@@ -678,9 +669,7 @@ def run_simulation_loop(
         print("Recording paused")
         if instruction_display is not None:
             instruction_display.show_demo(
-                build_label_text(
-                    current_recorded_demo_count, running_recording_instance
-                )
+                build_label_text(current_recorded_demo_count, running_recording_instance)
             )
 
     def toggle_recording_instance():
@@ -690,9 +679,7 @@ def run_simulation_loop(
         print(f"Recording {state}")
         if instruction_display is not None:
             instruction_display.show_demo(
-                build_label_text(
-                    current_recorded_demo_count, running_recording_instance
-                )
+                build_label_text(current_recorded_demo_count, running_recording_instance)
             )
 
     def export_and_reset():
@@ -732,9 +719,7 @@ def run_simulation_loop(
     env.reset()
     teleop_interface.reset()
 
-    label_text = build_label_text(
-        current_recorded_demo_count, running_recording_instance
-    )
+    label_text = build_label_text(current_recorded_demo_count, running_recording_instance)
     instruction_display = setup_ui(label_text, env)
 
     subtasks = {}
@@ -754,9 +739,7 @@ def run_simulation_loop(
                     if subtasks == {}:
                         subtasks = obv[0].get("subtask_terms")
                     elif subtasks:
-                        show_subtask_instructions(
-                            instruction_display, subtasks, obv, env.cfg
-                        )
+                        show_subtask_instructions(instruction_display, subtasks, obv, env.cfg)
             else:
                 env.sim.render()
 
@@ -768,13 +751,8 @@ def run_simulation_loop(
                 should_reset_recording_instance = True
 
             # Update demo count if it has changed
-            if (
-                env.recorder_manager.exported_successful_episode_count
-                > current_recorded_demo_count
-            ):
-                current_recorded_demo_count = (
-                    env.recorder_manager.exported_successful_episode_count
-                )
+            if env.recorder_manager.exported_successful_episode_count > current_recorded_demo_count:
+                current_recorded_demo_count = env.recorder_manager.exported_successful_episode_count
                 label_text = build_label_text(
                     current_recorded_demo_count, running_recording_instance
                 )
@@ -783,10 +761,11 @@ def run_simulation_loop(
             # Check if we've reached the desired number of demos
             if (
                 args_cli.num_demos > 0
-                and env.recorder_manager.exported_successful_episode_count
-                >= args_cli.num_demos
+                and env.recorder_manager.exported_successful_episode_count >= args_cli.num_demos
             ):
-                label_text = f"All {current_recorded_demo_count} demonstrations recorded.\nExiting the app."
+                label_text = (
+                    f"All {current_recorded_demo_count} demonstrations recorded.\nExiting the app."
+                )
                 instruction_display.show_demo(label_text)
                 print(label_text)
                 target_time = time.time() + 0.8
@@ -839,7 +818,7 @@ def main() -> None:
         rate_limiter = RateLimiter(args_cli.step_hz)
 
     # Register local task configs (if present)
-    local_task_root = os.path.join(os.path.dirname(__file__), "Task")
+    local_task_root = os.path.join(os.path.dirname(__file__), "..", "tasks")
     register_local_tasks(local_task_root)
 
     # Set up output directories
@@ -853,9 +832,7 @@ def main() -> None:
     env = create_environment(env_cfg)
 
     # Run simulation loop
-    current_recorded_demo_count = run_simulation_loop(
-        env, None, success_term, rate_limiter
-    )
+    current_recorded_demo_count = run_simulation_loop(env, None, success_term, rate_limiter)
 
     # Clean up
     env.close()
