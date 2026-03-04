@@ -10,6 +10,10 @@ Each grasp picks up a cube; each place releases it into the blue sorting bin.
 """
 
 from isaaclab.envs.mimic_env_cfg import MimicEnvCfg, SubTaskConfig
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+
+from . import place_bin_observations
 from isaaclab.utils import configclass
 
 from .place_bin_ik_rel_env_cfg import FrankaPlaceBinEnvCfg
@@ -97,7 +101,7 @@ class FrankaPlaceBinIKRelMimicEnvCfg(FrankaPlaceBinEnvCfg, MimicEnvCfg):
                 subtask_term_offset_range=(0, 0),
                 selection_strategy="nearest_neighbor_object",
                 selection_strategy_kwargs={"nn_k": 3},
-                action_noise=0.03,
+                action_noise=0.02,
                 num_interpolation_steps=0,
                 num_fixed_steps=0,
                 apply_noise_during_interpolation=False,
@@ -123,11 +127,11 @@ class FrankaPlaceBinIKRelMimicEnvCfg(FrankaPlaceBinEnvCfg, MimicEnvCfg):
             )
         )
 
-        # 6) Place cube_3 into bin (final subtask — no term signal needed)
+        # 6) Place cube_3 into bin
         subtask_configs.append(
             SubTaskConfig(
                 object_ref="blue_sorting_bin",
-                subtask_term_signal=None,
+                subtask_term_signal="place_3",
                 subtask_term_offset_range=(0, 0),
                 selection_strategy="nearest_neighbor_object",
                 selection_strategy_kwargs={"nn_k": 3},
@@ -140,3 +144,13 @@ class FrankaPlaceBinIKRelMimicEnvCfg(FrankaPlaceBinEnvCfg, MimicEnvCfg):
         )
 
         self.subtask_configs["franka"] = subtask_configs
+
+        # ── success termination (required for Mimic datagen) ───────────
+        self.terminations.success = DoneTerm(
+            func=place_bin_observations.object_in_bin,
+            params={
+                "robot_cfg": SceneEntityCfg("robot"),
+                "object_cfg": SceneEntityCfg("cube_3"),
+                "bin_cfg": SceneEntityCfg("blue_sorting_bin"),
+            },
+        )

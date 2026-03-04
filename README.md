@@ -90,6 +90,22 @@ source ~/miniforge3/bin/activate isaac  # 或你的 conda 环境
 python scripts/analyze_dataset.py datasets/franka_place_bin.hdf5 --mode full
 ```
 
+### 数据集标注和增强
+```bash
+# (1) 标注子任务边界
+./isaaclab.sh -p ../vla-arm-deployment/scripts/annotate_demos_local.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0 \
+  --input_file ../vla-arm-deployment/datasets/franka_place_bin_v1.hdf5 \
+  --output_file ../vla-arm-deployment/datasets/franka_place_bin_v2_annotated.hdf5
+
+# (2) 生成扩增数据
+./isaaclab.sh -p ../vla-arm-deployment/scripts/generate_dataset_local.py \
+  --task Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0 \
+  --input_dataset ../vla-arm-deployment/datasets/franka_place_bin_v1_annotated.hdf5 \
+  --output_dataset ../vla-arm-deployment/datasets/franka_place_bin_v1_augmented.hdf5 \
+  --num_trials 200
+```
+
 ### 转换为 LeRobot 格式
 
 ```bash
@@ -214,12 +230,26 @@ make clean
 - 启动后录制默认**开启**（`running_recording_instance = True`）
 - 闲置时段的数据也会被记录到 HDF5
 - **建议**：加载完成后按 `F9` 暂停，准备好后再开始录制
+- 四元数表示旋转，格式为 `(-x, w, y, z)`
 
 ### HDF5 文件覆盖警告
 
 - **每次运行都会覆盖同名文件！** 使用 `h5py.File(path, "w")` 模式
 - 第二次运行同样的 `--dataset_file` 命令会**丢失**第一次的数据
 - **建议**：每次录制使用不同的文件名，或使用 `make analyze` 检查后再继续
+
+### 数据采集建议
+
+**目标**：为后续 Mimic 数据增强提供高质量原始数据
+
+- **每条演示**：确保完整流程（抓取 → 放入 → 重复），至少 200-400 步
+- **采集数量**：建议 15-30 条完整演示/文件（太少则增强效果有限）
+- **多样化方向**：
+  - 方块位置随机（已配置）
+  - 抓取角度变化（不同方向接近方块）
+  - 允许少量失败/调整（增加鲁棒性）
+- **不要刻意随机化抓取顺序**：让模型自然学会抓最近的方块
+- **录制节奏**：不要过快，保持自然操作节奏
 
 ## 📝 文档
 

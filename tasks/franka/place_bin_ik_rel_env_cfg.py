@@ -127,6 +127,14 @@ class ObservationsCfg:
                 "object_cfg": SceneEntityCfg("cube_3"),
             },
         )
+        place_3 = ObsTerm(
+            func=place_bin_observations.object_in_bin,
+            params={
+                "robot_cfg": SceneEntityCfg("robot"),
+                "object_cfg": SceneEntityCfg("cube_3"),
+                "bin_cfg": SceneEntityCfg("blue_sorting_bin"),
+            },
+        )
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -233,9 +241,29 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
             ),
         )
 
+        # Side table camera (side view looking at table)
+        self.scene.table_cam_side = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/table_cam_side",
+            update_period=0.0,
+            height=200,
+            width=200,
+            data_types=["rgb", "distance_to_image_plane"],
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=18.0,
+                focus_distance=400.0,
+                horizontal_aperture=20.955,
+                clipping_range=(0.1, 2),
+            ),
+            offset=CameraCfg.OffsetCfg(
+                pos=(0.45, -0.8, 0.6),  # Side position
+                rot=(-0.5, 0.866, 0, 0),  
+                convention="ros",
+            ),
+        )
+
         self.num_rerenders_on_reset = 3
         self.sim.render.antialiasing_mode = "DLAA"
-        self.image_obs_list = ["table_cam", "wrist_cam"]
+        self.image_obs_list = ["table_cam", "table_cam_side", "wrist_cam"]
 
         # Teleop devices
         self.teleop_devices = DevicesCfg(
