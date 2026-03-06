@@ -65,6 +65,14 @@ class ObservationsCfg:
                 "normalize": False,
             },
         )
+        table_cam_side = ObsTerm(
+            func=mdp.image,
+            params={
+                "sensor_cfg": SceneEntityCfg("table_cam_side"),
+                "data_type": "rgb",
+                "normalize": False,
+            },
+        )
         wrist_cam = ObsTerm(
             func=mdp.image,
             params={
@@ -256,7 +264,7 @@ class FrankaPlaceBinEnvCfg(bin_stack_joint_pos_env_cfg.FrankaBinStackEnvCfg):
             ),
             offset=CameraCfg.OffsetCfg(
                 pos=(0.45, -0.8, 0.6),  # Side position
-                rot=(-0.5, 0.866, 0, 0),  
+                rot=(-0.5, 0.866, 0, 0),
                 convention="ros",
             ),
         )

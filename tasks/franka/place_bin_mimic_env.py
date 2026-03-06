@@ -88,9 +88,7 @@ class FrankaPlaceBinIKRelMimicEnv(ManagerBasedRLMimicEnv):
 
         return torch.cat([pose_action, gripper_action], dim=0)
 
-    def action_to_target_eef_pose(
-        self, action: torch.Tensor
-    ) -> dict[str, torch.Tensor]:
+    def action_to_target_eef_pose(self, action: torch.Tensor) -> dict[str, torch.Tensor]:
         """Convert env action to target EEF pose (inverse of target_eef_pose_to_action).
 
         Args:
@@ -119,9 +117,9 @@ class FrankaPlaceBinIKRelMimicEnv(ManagerBasedRLMimicEnv):
         is_close_to_zero_angle = torch.isclose(
             delta_rotation_angle, torch.zeros_like(delta_rotation_angle)
         ).squeeze(1)
-        delta_rotation_axis[is_close_to_zero_angle] = torch.zeros_like(
-            delta_rotation_axis
-        )[is_close_to_zero_angle]
+        delta_rotation_axis[is_close_to_zero_angle] = torch.zeros_like(delta_rotation_axis)[
+            is_close_to_zero_angle
+        ]
 
         delta_quat = PoseUtils.quat_from_angle_axis(
             delta_rotation_angle.squeeze(1), delta_rotation_axis
@@ -133,9 +131,7 @@ class FrankaPlaceBinIKRelMimicEnv(ManagerBasedRLMimicEnv):
 
         return {eef_name: target_poses}
 
-    def actions_to_gripper_actions(
-        self, actions: torch.Tensor
-    ) -> dict[str, torch.Tensor]:
+    def actions_to_gripper_actions(self, actions: torch.Tensor) -> dict[str, torch.Tensor]:
         """Extract gripper action from environment actions.
 
         Args:
@@ -152,13 +148,9 @@ class FrankaPlaceBinIKRelMimicEnv(ManagerBasedRLMimicEnv):
     ) -> dict[str, torch.Tensor]:
         """Get termination signal flags for each subtask.
 
-        For the place-into-bin task we have 5 signals (the 6th subtask is final,
-        so it has no signal):
-          - grasp_1: cube_1 grasped
-          - place_1: cube_1 placed in bin
-          - grasp_2: cube_2 grasped
-          - place_2: cube_2 placed in bin
+        Cube3-only mode: we only need
           - grasp_3: cube_3 grasped
+          - place_3: cube_3 placed in bin
 
         Args:
             env_ids: Environment indices. If None, all envs are considered.
@@ -169,15 +161,11 @@ class FrankaPlaceBinIKRelMimicEnv(ManagerBasedRLMimicEnv):
         if env_ids is None:
             env_ids = slice(None)
 
-        signals = dict()
         subtask_terms = self.obs_buf["subtask_terms"]
-        signals["grasp_1"] = subtask_terms["grasp_1"][env_ids]
-        signals["place_1"] = subtask_terms["place_1"][env_ids]
-        signals["grasp_2"] = subtask_terms["grasp_2"][env_ids]
-        signals["place_2"] = subtask_terms["place_2"][env_ids]
-        signals["grasp_3"] = subtask_terms["grasp_3"][env_ids]
-        # place_3 is the final subtask — no signal needed
-        return signals
+        return {
+            "grasp_3": subtask_terms["grasp_3"][env_ids],
+            "place_3": subtask_terms["place_3"][env_ids],
+        }
 
     def get_expected_attached_object(
         self, eef_name: str, subtask_index: int, env_cfg

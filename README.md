@@ -74,6 +74,9 @@ pip install -e ".[dev]"
 cd ~/IsaacLab
 source ~/miniforge3/bin/activate isaac  # 或你的 conda 环境
 
+# 我的本地资产路径，可更换为你的实际路径
+export ISAACLAB_ASSETS_DIR=/home/intern/vla-arm-deployment/assets/Isaac/IsaacLab
+
 # 录制 Franka 放置任务
 ./isaaclab.sh -p ../vla-arm-deployment/scripts/record_demos.py \
   --task Isaac-Place-Bin-Franka-IK-Rel-v0 \
@@ -101,9 +104,14 @@ python scripts/analyze_dataset.py datasets/franka_place_bin.hdf5 --mode full
 # (2) 生成扩增数据
 ./isaaclab.sh -p ../vla-arm-deployment/scripts/generate_dataset_local.py \
   --task Isaac-Place-Bin-Franka-IK-Rel-Mimic-v0 \
-  --input_dataset ../vla-arm-deployment/datasets/franka_place_bin_v1_annotated.hdf5 \
-  --output_dataset ../vla-arm-deployment/datasets/franka_place_bin_v1_augmented.hdf5 \
-  --num_trials 200
+  --input_file ../vla-arm-deployment/datasets/franka_place_bin_3camera_annotated.hdf5 \
+  --output_file ../vla-arm-deployment/datasets/franka_place_bin_3camera_augmented.hdf5 \
+  --generation_num_trials 200
+
+# (3) 提取所有相机的视频
+python3 /home/intern/vla-arm-deployment/scripts/extract_hdf5_videos.py \
+  --input /home/intern/vla-arm-deployment/datasets/franka_place_bin_3camera_augmented.hdf5 \
+  --output ./videos
 ```
 
 ### 转换为 LeRobot 格式
@@ -230,7 +238,7 @@ make clean
 - 启动后录制默认**开启**（`running_recording_instance = True`）
 - 闲置时段的数据也会被记录到 HDF5
 - **建议**：加载完成后按 `F9` 暂停，准备好后再开始录制
-- 四元数表示旋转，格式为 `(-x, w, y, z)`
+- 四元数在代码里写 `(-x, w, y, z)` 在isaac sim里是 `(w, x, y, z)`
 
 ### HDF5 文件覆盖警告
 
@@ -251,12 +259,14 @@ make clean
 - **不要刻意随机化抓取顺序**：让模型自然学会抓最近的方块
 - **录制节奏**：不要过快，保持自然操作节奏
 
-## 📝 文档
-
-- [完整工作流程](docs/workflow.md)
-- [任务配置说明](docs/tasks.md)
-- [常见问题解答](docs/faq.md)
-- [API 文档](docs/api.md)
+### Mimic 的完整流程是：
+- | 步骤 | 做什么 | 关键性 |
+- |------|--------|--------|
+- | 1. 场景随机化 | cube 随机位置、机械臂初始姿态随机 | ⭐⭐⭐ |
+- | 2. 源 demo 选择 | 从标注池找最相似的历史片段 | ⭐⭐ |
+- | 3. 空间变换 | 把动作映射到新 cube 位置 | ⭐⭐⭐⭐⭐ |
+- | 4. 动作插值 | 平滑过渡到目标 | ⭐⭐ |
+- | 5. 噪声添加 | 加 3cm 扰动（只是最后一步） | ⭐ |
 
 ## 🤝 贡献
 
